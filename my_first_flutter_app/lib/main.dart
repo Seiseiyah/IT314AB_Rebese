@@ -1,245 +1,178 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() => runApp(const MyApp());
+
+//Profile Data Class
+class Profile {
+  final String name;
+  final String course;
+  final int age;
+  final String hobby;
+  final double height;
+  final bool isStudent;
+  final String image;
+
+  const Profile({
+    required this.name,
+    required this.course,
+    required this.age,
+    required this.hobby,
+    required this.height,
+    required this.isStudent,
+    required this.image,
+  });
 }
+
+const profiles = [
+  Profile(
+    name: 'Allan Alomo',
+    course: 'BSIT 3',
+    age: 22,
+    hobby: 'Not Provided',
+    height: 160.5,
+    isStudent: true,
+    image: 'assets/Allan.jfif',
+  ),
+  Profile(
+    name: 'Ceb helen',
+    course: 'Unknown',
+    age: 21,
+    hobby: 'Gaming',
+    height: 170,
+    isStudent: true,
+    image: 'assets/parbs.jpg',
+  ),
+  Profile(
+    name: 'Kenwel Novetnom',
+    course: 'BSIT 3',
+    age: 19,
+    hobby: 'Reading',
+    height: 155,
+    isStudent: true,
+    image: 'assets/profile.jfif',
+  ),
+  Profile(
+    name: 'Keth Lopes',
+    course: 'BSIT 3',
+    age: 22,
+    hobby: 'Computer Programming',
+    height: 180,
+    isStudent: true,
+    image: 'assets/ket.jpg',
+  ),
+  Profile(
+    name: 'Unknown',
+    course: 'BSIT-3',
+    age: 20,
+    hobby: 'Skiing',
+    height: 175,
+    isStudent: true,
+    image: 'assets/eya.png',
+  ),
+];
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    //
+    // The root widget of the application.
+    //
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'My First Flutter Application',
+      title: 'Student Profile',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+      ),
+      home: const ProfilePage(),
+    );
+  }
+}
 
-      home: Scaffold(
-        backgroundColor: Colors.lightBlue[50],
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
 
-        // =========================================================
-        // APP BAR
-        // =========================================================
-        appBar: AppBar(
-          backgroundColor: Colors.blue,
-          centerTitle: true,
-          title: const Text(
-            'My First Flutter Application',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Student Profile'),
+        centerTitle: true,
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
+      // Creates one ProfileCard for each item in profiles.
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: profiles.length,
+        itemBuilder: (_, index) => ProfileCard(profile: profiles[index]),
+      ),
+    );
+  }
+}
 
-        // =========================================================
-        // BODY
-        // =========================================================
-        body: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // =====================================================
-                // PROFILE CARD
-                // =====================================================
-                Card(
-                  elevation: 8,
+class ProfileCard extends StatelessWidget {
+  final Profile profile;
 
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: const BorderSide(color: Colors.blue, width: 2),
-                  ),
+  const ProfileCard({super.key, required this.profile});
 
-                  child: Padding(
-                    padding: const EdgeInsets.all(25),
-
-                    // Profile information
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-
-                      children: [
-                        // =================================================
-                        // FLAG 12: IMAGE
-                        // =================================================
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(60),
-                          child: Image.asset(
-                            'assets/profile.jfif',
-                            width: 120,
-                            height: 120,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 15),
-
-                        // FLAG 10: ICON
-                        const Icon(Icons.person, size: 50),
-
-                        const SizedBox(height: 10),
-
-                        // FLAG 1: NAME
-                        const Text(
-                          'Vincent A. Rebese',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 10),
-
-                        // =================================================
-                        // FLAG 1: COURSE
-                        // =================================================
-                        const Text(
-                          'BSIT 3',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 10),
-
-                        // =================================================
-                        // FLAG 1: APPLICATION TITLE
-                        // =================================================
-                        const Text(
-                          'My First Flutter Application',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 10),
-
-                        // =================================================
-                        // FLAG 1: DATE
-                        // =================================================
-                        const Text(
-                          'August 11, 2026',
-                          style: TextStyle(fontSize: 18),
-                        ),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 10),
-
-                        // =================================================
-                        // FLAG 3: HOBBY
-                        // =================================================
-                        const Text(
-                          'Hobby: Lazing',
-                          style: TextStyle(fontSize: 20, color: Colors.black),
-                        ),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 15),
-
-                        // =================================================
-                        // FLAG 4: ROW
-                        // Age and Birthdate are side-by-side
-                        // =================================================
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text('Age: 22', style: TextStyle(fontSize: 18)),
-
-                            // Horizontal spacing
-                            SizedBox(width: 30),
-
-                            Text(
-                              'Birthdate: December 23, 2003',
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // =====================================================
-                // SPACE BETWEEN CARDS
-                // =====================================================
-                const SizedBox(height: 20),
-
-                // =====================================================
-                // FAVORITES CARD
-                // =====================================================
-                Card(
-                  elevation: 8,
-
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-
-                      children: [
-                        // =================================================
-                        // FAVORITES TITLE
-                        // =================================================
-                        const Text(
-                          'My Favorites',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 10),
-
-                        // =================================================
-                        // FAVORITE GAME
-                        // =================================================
-                        const Text('Favorite Game: Mobile Legends'),
-
-                        const SizedBox(height: 5),
-
-                        // =================================================
-                        // FAVORITE FOOD
-                        // =================================================
-                        const Text('Favorite Food: Her'),
-
-                        const SizedBox(height: 5),
-
-                        // =================================================
-                        // FAVORITE MOVIE
-                        // =================================================
-                        const Text('Favorite Movie: The Grudge'),
-
-                        // Flag 5: Spacing
-                        const SizedBox(height: 10),
-
-                        // =================================================
-                        // FLAG 8: ROW INSIDE FAVORITES CARD
-                        // =================================================
-                        const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Game: ML, Dota2, Valorant'),
-
-                            SizedBox(width: 20),
-
-                            Text('Food: Adobo'),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+  @override
+  Widget build(BuildContext context) {
+    //Profile object and displays its values.
+    return Card(
+      margin: const EdgeInsets.only(bottom: 20),
+      elevation: 5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            CircleAvatar(
+              radius: 60,
+              backgroundImage: AssetImage(profile.image),
             ),
-          ),
+            const SizedBox(height: 15),
+            Text(
+              profile.name,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              profile.course,
+              style: const TextStyle(fontSize: 18, color: Colors.grey),
+            ),
+            const Divider(height: 30),
+
+            InfoRow('Age', '${profile.age}'),
+            InfoRow('Hobby', profile.hobby),
+            InfoRow('Height', '${profile.height} cm'),
+            InfoRow('Student', profile.isStudent ? 'Yes' : 'No'),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const InfoRow(this.label, this.value, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+          // Expanded lets longer values use the remaining horizontal space.
+          Expanded(child: Text(value)),
+        ],
       ),
     );
   }
