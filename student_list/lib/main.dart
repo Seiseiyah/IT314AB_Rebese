@@ -117,8 +117,51 @@ final List<Student> students = [
   ),
 ]..sort((first, second) => first.name.compareTo(second.name));
 
-class StudentDirectoryPage extends StatelessWidget {
+class StudentDirectoryPage extends StatefulWidget {
   const StudentDirectoryPage({super.key});
+
+  @override
+  State<StudentDirectoryPage> createState() => _StudentDirectoryPageState();
+}
+
+class _StudentDirectoryPageState extends State<StudentDirectoryPage> {
+  final Set<String> _favoriteStudentIds = {};
+
+  void _toggleFavorite(Student student) {
+    setState(() {
+      if (!_favoriteStudentIds.add(student.studentId)) {
+        _favoriteStudentIds.remove(student.studentId);
+      }
+    });
+
+    final isFavorite = _favoriteStudentIds.contains(student.studentId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isFavorite
+              ? 'Added ${student.name} to favorites.'
+              : 'Removed ${student.name} from favorites.',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _deleteStudent(Student student) {
+    setState(() {
+      students.removeWhere(
+        (currentStudent) => currentStudent.studentId == student.studentId,
+      );
+      _favoriteStudentIds.remove(student.studentId);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${student.name} removed from the directory.'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,32 +193,22 @@ class StudentDirectoryPage extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 760),
                 child: ListView(
                   padding: const EdgeInsets.all(16),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: StudentCard(student: students[0]),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: StudentCard(student: students[1]),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: StudentCard(student: students[2]),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: StudentCard(student: students[3]),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: StudentCard(student: students[4]),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: StudentCard(student: students[5]),
-                    ),
-                  ],
+                  children: students
+                      .map(
+                        (student) => Padding(
+                          key: ValueKey(student.studentId),
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: StudentCard(
+                            student: student,
+                            isFavorite: _favoriteStudentIds.contains(
+                              student.studentId,
+                            ),
+                            onFavoritePressed: () => _toggleFavorite(student),
+                            onDeletePressed: () => _deleteStudent(student),
+                          ),
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
             ),
@@ -184,116 +217,177 @@ class StudentDirectoryPage extends StatelessWidget {
 }
 
 class StudentCard extends StatelessWidget {
-  const StudentCard({super.key, required this.student});
+  const StudentCard({
+    super.key,
+    required this.student,
+    required this.isFavorite,
+    required this.onFavoritePressed,
+    required this.onDeletePressed,
+  });
 
   final Student student;
+  final bool isFavorite;
+  final VoidCallback onFavoritePressed;
+  final VoidCallback onDeletePressed;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      elevation: 1,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Student header
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    student.image,
-                    width: 75,
-                    height: 75,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 75,
-                        height: 75,
-                        color: Colors.indigo.shade100,
-                        alignment: Alignment.center,
-                        child: Text(
-                          student.name.substring(0, 1).toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.indigo.shade700,
+    return GestureDetector(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${student.name} card tapped.'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Card(
+        color: Colors.white,
+        elevation: 1,
+        shadowColor: Colors.black12,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Student header
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.asset(
+                      student.image,
+                      width: 75,
+                      height: 75,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 75,
+                          height: 75,
+                          color: Colors.indigo.shade100,
+                          alignment: Alignment.center,
+                          child: Text(
+                            student.name.substring(0, 1).toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.indigo.shade700,
+                            ),
                           ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          student.name,
+                          style: const TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        Text(
+                          student.course,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+
+                        const SizedBox(height: 3),
+
+                        Text(
+                          student.yearLevel,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.indigo.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              Divider(height: 1, color: Colors.grey.shade200),
+
+              const SizedBox(height: 14),
+
+              // Student details
+              Column(
+                children: [
+                  _StudentDetail(label: 'Age', value: '${student.age}'),
+
+                  _StudentDetail(label: 'Hobby', value: student.hobby),
+
+                  _StudentDetail(label: 'Student ID', value: student.studentId),
+
+                  _StudentDetail(label: 'Email', value: student.email),
+
+                  _StudentDetail(
+                    label: 'Favorite Subject',
+                    value: student.favoriteSubject,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed: onFavoritePressed,
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                    ),
+                    label: Text(isFavorite ? 'Favorited' : 'Favorite'),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('Edit ${student.name}'),
+                          content: const Text(
+                            'Student editing is ready for the next step.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Close'),
+                            ),
+                          ],
                         ),
                       );
                     },
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
                   ),
-                ),
-
-                const SizedBox(width: 16),
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student.name,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-
-                      const SizedBox(height: 6),
-
-                      Text(
-                        student.course,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-
-                      const SizedBox(height: 3),
-
-                      Text(
-                        student.yearLevel,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.indigo.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  TextButton.icon(
+                    onPressed: onDeletePressed,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete'),
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            Divider(height: 1, color: Colors.grey.shade200),
-
-            const SizedBox(height: 14),
-
-            // Student details
-            Column(
-              children: [
-                _StudentDetail(label: 'Age', value: '${student.age}'),
-
-                _StudentDetail(label: 'Hobby', value: student.hobby),
-
-                _StudentDetail(label: 'Student ID', value: student.studentId),
-
-                _StudentDetail(label: 'Email', value: student.email),
-
-                _StudentDetail(
-                  label: 'Favorite Subject',
-                  value: student.favoriteSubject,
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
