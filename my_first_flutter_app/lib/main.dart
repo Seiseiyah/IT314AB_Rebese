@@ -54,7 +54,7 @@ class MyApp extends StatelessWidget {
 
                   // Name
                   const Text(
-                    'Vincent A. Rebese',
+                    'JEO ONG',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 26,
