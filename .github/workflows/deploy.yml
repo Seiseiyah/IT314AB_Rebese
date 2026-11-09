@@ -2,7 +2,7 @@ name: Deploy Flutter Web to Lightsail
 
 on:
   push:
-    branches: [ manes ]
+    branches: [ main ]
 
 jobs:
   deploy:
