@@ -10,11 +10,86 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:student_list/main.dart';
 
+Future<void> _pumpLoadedDirectory(WidgetTester tester) async {
+  await tester.pumpWidget(const MyApp());
+  await tester.pump(const Duration(seconds: 1));
+}
+
 void main() {
-  testWidgets('renders sorted students with generated cards', (
+  testWidgets('shows loading state before displaying students', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const MyApp());
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Loading students...'), findsOneWidget);
+    expect(find.byType(StudentCard), findsNothing);
+    expect(find.byType(ListView), findsNothing);
+    expect(find.text('No students found.'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(StudentCard), findsWidgets);
+    expect(find.byType(ListView), findsOneWidget);
+    expect(find.text('No students found.'), findsNothing);
+  });
+
+  testWidgets('shows empty state after loading an empty directory', (
+    WidgetTester tester,
+  ) async {
+    final originalStudents = List<Student>.from(students);
+    addTearDown(() {
+      students
+        ..clear()
+        ..addAll(originalStudents);
+    });
+    students.clear();
+
+    await tester.pumpWidget(const MyApp());
+
+    expect(find.text('Loading students...'), findsOneWidget);
+    expect(find.text('No students found.'), findsNothing);
+    expect(find.byType(ListView), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Loading students...'), findsNothing);
+    expect(find.text('No students found.'), findsOneWidget);
+    expect(find.byType(StudentCard), findsNothing);
+    expect(find.byType(ListView), findsNothing);
+  });
+
+  testWidgets('shows active and inactive status on student cards', (
+    WidgetTester tester,
+  ) async {
+    await _pumpLoadedDirectory(tester);
+
+    final activeCard = find
+        .byWidgetPredicate(
+          (widget) => widget is StudentCard && widget.student.isActive,
+        )
+        .first;
+    final inactiveCard = find
+        .byWidgetPredicate(
+          (widget) => widget is StudentCard && !widget.student.isActive,
+        )
+        .first;
+
+    expect(
+      find.descendant(of: activeCard, matching: find.text('Active')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: inactiveCard, matching: find.text('Inactive')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('renders sorted students with generated cards', (
+    WidgetTester tester,
+  ) async {
+    await _pumpLoadedDirectory(tester);
 
     expect(find.text('Aaron Cruz'), findsOneWidget);
     expect(find.byType(ListView), findsOneWidget);
@@ -27,24 +102,41 @@ void main() {
     expect(find.text('Maria Santos'), findsOneWidget);
   });
 
-  testWidgets('shows an empty state when there are no students', (
+  testWidgets('shows empty state after deleting every student', (
     WidgetTester tester,
   ) async {
     final originalStudents = List<Student>.from(students);
-    students.clear();
+    addTearDown(() {
+      students
+        ..clear()
+        ..addAll(originalStudents);
+    });
 
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
+
+    while (students.isNotEmpty) {
+      final deleteButton = find.descendant(
+        of: find.byType(StudentCard).first,
+        matching: find.text('Delete'),
+      );
+      await tester.ensureVisible(deleteButton);
+      await tester.tap(deleteButton);
+      await tester.pump();
+    }
 
     expect(find.text('No students found.'), findsOneWidget);
+    expect(
+      find.text('There are no students in the directory yet.'),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.people_outline), findsOneWidget);
     expect(find.byType(StudentCard), findsNothing);
-
-    students
-      ..clear()
-      ..addAll(originalStudents);
+    expect(find.byType(ListView), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('favorite action shows feedback', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
 
     await tester.tap(find.text('Favorite').first);
     await tester.pump();
@@ -60,7 +152,7 @@ void main() {
   testWidgets('favorite action toggles visible state', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
     final firstCard = find.byType(StudentCard).first;
 
     expect(
@@ -73,6 +165,10 @@ void main() {
         matching: find.byIcon(Icons.favorite_border),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(of: firstCard, matching: find.text('Favorite student')),
+      findsNothing,
     );
 
     await tester.tap(
@@ -88,6 +184,10 @@ void main() {
       find.descendant(of: firstCard, matching: find.byIcon(Icons.favorite)),
       findsOneWidget,
     );
+    expect(
+      find.descendant(of: firstCard, matching: find.text('Favorite student')),
+      findsOneWidget,
+    );
 
     await tester.tap(
       find.descendant(of: firstCard, matching: find.text('Favorited')),
@@ -105,12 +205,16 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      find.descendant(of: firstCard, matching: find.text('Favorite student')),
+      findsNothing,
+    );
   });
 
   testWidgets('favorite status is independent for each student', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
     final firstStudent = students.first;
     final secondStudent = students[1];
     final firstCard = find.byWidgetPredicate(
@@ -162,7 +266,7 @@ void main() {
         ..addAll(originalStudents);
     });
 
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
     final studentToDelete = students[1];
     final expectedRemaining = [
       ...students.take(1),
@@ -197,7 +301,7 @@ void main() {
         ..addAll(originalStudents);
     });
 
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
     final favoriteStudent = students[0];
     final editStudent = students[1];
     final deletedStudent = students[2];
@@ -271,7 +375,7 @@ void main() {
   testWidgets('edit action opens a dismissible dialog', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
 
     await tester.tap(find.text('Edit').first);
     await tester.pumpAndSettle();
@@ -291,7 +395,7 @@ void main() {
   testWidgets('tapping the student card shows separate feedback', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await _pumpLoadedDirectory(tester);
 
     await tester.tap(find.text(students.first.name));
     await tester.pump();

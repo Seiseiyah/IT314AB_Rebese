@@ -28,6 +28,7 @@ class Student {
   final String name;
   final String course;
   final String yearLevel;
+  final bool isActive;
   final int age;
   final String hobby;
   final String studentId;
@@ -39,6 +40,7 @@ class Student {
     required this.name,
     required this.course,
     required this.yearLevel,
+    required this.isActive,
     required this.age,
     required this.hobby,
     required this.studentId,
@@ -54,6 +56,7 @@ final List<Student> students = [
     name: 'Keith Sins',
     course: 'BS Information Technology',
     yearLevel: '3rd Year',
+    isActive: true,
     age: 29,
     hobby: 'Sleeping',
     studentId: '2023-0001',
@@ -65,6 +68,7 @@ final List<Student> students = [
     name: 'Clyde lilicon',
     course: 'BS Information Technology',
     yearLevel: '3rd Year',
+    isActive: false,
     age: 17,
     hobby: 'Basketball',
     studentId: '2023-0002',
@@ -76,6 +80,7 @@ final List<Student> students = [
     name: 'Antonio Badi',
     course: 'BS Information Technology',
     yearLevel: '3rd Year',
+    isActive: true,
     age: 21,
     hobby: 'Reading',
     studentId: '2022-0003',
@@ -87,6 +92,7 @@ final List<Student> students = [
     name: 'Carl gaye',
     course: 'BS Information Technology',
     yearLevel: '3rd Year',
+    isActive: false,
     age: 25,
     hobby: 'Dancing',
     studentId: '2025-0004',
@@ -98,6 +104,7 @@ final List<Student> students = [
     name: 'Liam Badingon',
     course: 'BS Information Technology',
     yearLevel: '3rd Year',
+    isActive: true,
     age: 20,
     hobby: 'Cycling',
     studentId: '2023-0005',
@@ -109,6 +116,7 @@ final List<Student> students = [
     name: 'Allan Iskobar',
     course: 'BS Information Technology',
     yearLevel: '3rd Year',
+    isActive: false,
     age: 24,
     hobby: 'Cycling',
     studentId: '2023-0006',
@@ -126,6 +134,21 @@ class StudentDirectoryPage extends StatefulWidget {
 
 class _StudentDirectoryPageState extends State<StudentDirectoryPage> {
   final Set<String> _favoriteStudentIds = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudents();
+  }
+
+  Future<void> _loadStudents() async {
+    await Future<void>.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+    });
+  }
 
   void _toggleFavorite(Student student) {
     setState(() {
@@ -163,6 +186,39 @@ class _StudentDirectoryPageState extends State<StudentDirectoryPage> {
     );
   }
 
+  Widget _buildDirectoryContent() {
+    if (_isLoading) {
+      return const _LoadingStudentState();
+    }
+
+    if (students.isEmpty) {
+      return const _EmptyStudentState();
+    }
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: students
+              .map(
+                (student) => Padding(
+                  key: ValueKey(student.studentId),
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: StudentCard(
+                    student: student,
+                    isFavorite: _favoriteStudentIds.contains(student.studentId),
+                    onFavoritePressed: () => _toggleFavorite(student),
+                    onDeletePressed: () => _deleteStudent(student),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,32 +242,7 @@ class _StudentDirectoryPageState extends State<StudentDirectoryPage> {
           ),
         ],
       ),
-      body: students.isEmpty
-          ? const _EmptyStudentState()
-          : Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: students
-                      .map(
-                        (student) => Padding(
-                          key: ValueKey(student.studentId),
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: StudentCard(
-                            student: student,
-                            isFavorite: _favoriteStudentIds.contains(
-                              student.studentId,
-                            ),
-                            onFavoritePressed: () => _toggleFavorite(student),
-                            onDeletePressed: () => _deleteStudent(student),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ),
-            ),
+      body: _buildDirectoryContent(),
     );
   }
 }
@@ -316,6 +347,46 @@ class StudentCard extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+
+                        const SizedBox(height: 8),
+
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: student.isActive
+                                ? Colors.green.shade50
+                                : Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                student.isActive
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                size: 14,
+                                color: student.isActive
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                student.isActive ? 'Active' : 'Inactive',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: student.isActive
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -327,6 +398,36 @@ class StudentCard extends StatelessWidget {
               Divider(height: 1, color: Colors.grey.shade200),
 
               const SizedBox(height: 14),
+
+              if (isFavorite)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.pink.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star, size: 15, color: Colors.pink.shade700),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Favorite student',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.pink.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
               // Student details
               Column(
@@ -432,9 +533,42 @@ class _EmptyStudentState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        'No students found.',
-        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.people_outline, size: 64, color: Colors.indigo.shade300),
+          const SizedBox(height: 16),
+          const Text(
+            'No students found.',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'There are no students in the directory yet.',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingStudentState extends StatelessWidget {
+  const _LoadingStudentState();
+  
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(
+            'Loading students...',
+            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+          ),
+        ],
       ),
     );
   }
