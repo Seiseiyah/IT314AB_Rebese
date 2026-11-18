@@ -7,15 +7,25 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:student_list/main.dart';
 
 Future<void> _pumpLoadedDirectory(WidgetTester tester) async {
   await tester.pumpWidget(const MyApp());
   await tester.pump(const Duration(seconds: 1));
+  await tester.pumpAndSettle();
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('shows loading state before displaying students', (
     WidgetTester tester,
   ) async {
@@ -36,12 +46,28 @@ void main() {
     expect(find.text('No students found.'), findsNothing);
 
     await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byType(StudentCard), findsWidgets);
     expect(find.byType(ListView), findsOneWidget);
     expect(find.text('No students found.'), findsNothing);
   });
+
+  testWidgets(
+    'direct details route without arguments returns to student list',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MyApp(initialRoute: StudentDetailsScreen.routeName),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(StudentListScreen), findsOneWidget);
+      expect(find.byType(StudentDetailsScreen), findsNothing);
+    },
+  );
 
   testWidgets('shows empty state after loading an empty directory', (
     WidgetTester tester,
@@ -465,9 +491,17 @@ void main() {
     );
     expect(find.text('Add Student'), findsOneWidget);
     expect(
-      find.descendant(of: addStudentScreen, matching: find.byType(TextField)),
-      findsNothing,
+      find.descendant(
+        of: addStudentScreen,
+        matching: find.byType(TextFormField),
+      ),
+      findsNWidgets(5),
     );
+    expect(find.text('Student ID'), findsOneWidget);
+    expect(find.text('Full Name'), findsOneWidget);
+    expect(find.text('Course'), findsOneWidget);
+    expect(find.text('Year Level'), findsOneWidget);
+    expect(find.text('Email Address'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -475,5 +509,379 @@ void main() {
     expect(find.byType(AddStudentScreen), findsNothing);
     expect(find.byType(StudentListScreen), findsOneWidget);
     expect(find.text('Student Directory'), findsOneWidget);
+  });
+
+  testWidgets(
+    'enrolled student supports details editing, list navigation, and persistence',
+    (WidgetTester tester) async {
+      final originalStudents = List<Student>.from(students);
+      addTearDown(() {
+        students
+          ..clear()
+          ..addAll(originalStudents);
+      });
+
+      await _pumpLoadedDirectory(tester);
+      await tester.tap(find.byTooltip('Add Student'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Enroll Student'));
+      await tester.tap(find.text('Enroll Student'));
+      await tester.pumpAndSettle();
+      expect(find.text('This field is required.'), findsNWidgets(5));
+      expect(students, hasLength(originalStudents.length));
+
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-student-id')),
+        '2023-0001',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-full-name')),
+        'Taylor Student',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-course')),
+        'BS Computer Science',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-year-level')),
+        '1st Year',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-email')),
+        'invalid-email',
+      );
+      await tester.ensureVisible(find.text('Enroll Student'));
+      await tester.tap(find.text('Enroll Student'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('A student with this ID already exists.'),
+        findsOneWidget,
+      );
+      expect(find.text('Enter a valid email address.'), findsOneWidget);
+      expect(students, hasLength(originalStudents.length));
+
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-student-id')),
+        '2026-0099',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-email')),
+        'taylor@example.com',
+      );
+      await tester.ensureVisible(find.text('Enroll Student'));
+      await tester.tap(find.text('Enroll Student'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AddStudentScreen), findsNothing);
+      expect(find.text('7 Students'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      students
+        ..clear()
+        ..addAll(originalStudents);
+      await tester.pumpWidget(const MyApp());
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('7 Students'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Taylor Student'),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+      expect(find.text('Taylor Student'), findsOneWidget);
+      expect(
+        students.any((student) => student.studentId == '2026-0099'),
+        isTrue,
+      );
+
+      await tester.tap(find.text('Taylor Student'));
+      await tester.pumpAndSettle();
+
+      final detailsScreen = find.byType(StudentDetailsScreen);
+      expect(detailsScreen, findsOneWidget);
+      expect(
+        find.descendant(of: detailsScreen, matching: find.text('2026-0099')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: detailsScreen,
+          matching: find.text('BS Computer Science'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: detailsScreen, matching: find.text('1st Year')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: detailsScreen,
+          matching: find.text('taylor@example.com'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Edit Student'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('student-name')),
+        'Taylor Updated',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('student-email')),
+        'taylor.updated@example.com',
+      );
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        find.descendant(
+          of: detailsScreen,
+          matching: find.text('Taylor Updated'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: detailsScreen,
+          matching: find.text('taylor.updated@example.com'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        students.firstWhere((student) => student.studentId == '2026-0099').name,
+        'Taylor Updated',
+      );
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Taylor Updated'),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+      expect(find.text('Taylor Updated'), findsOneWidget);
+      expect(find.text('taylor.updated@example.com'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      students
+        ..clear()
+        ..addAll(originalStudents);
+      await tester.pumpWidget(const MyApp());
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('7 Students'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Taylor Updated'),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+      expect(find.text('Taylor Updated'), findsOneWidget);
+      expect(find.text('taylor.updated@example.com'), findsOneWidget);
+      expect(find.text('Taylor Student'), findsNothing);
+      expect(
+        students.map((student) => student.studentId).toSet().length,
+        students.length,
+      );
+
+      await tester.tap(find.byTooltip('Add Student'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('enrollment-student-id')),
+        '2026-0099',
+      );
+      await tester.ensureVisible(find.text('Enroll Student'));
+      await tester.tap(find.text('Enroll Student'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AddStudentScreen), findsOneWidget);
+      expect(
+        find.text('A student with this ID already exists.'),
+        findsOneWidget,
+      );
+      expect(students, hasLength(7));
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Taylor Updated'));
+      await tester.pumpAndSettle();
+      expect(find.byType(StudentDetailsScreen), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(StudentDetailsScreen),
+          matching: find.text('2026-0099'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(StudentDetailsScreen),
+          matching: find.text('taylor.updated@example.com'),
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('student-id')),
+        '2023-0001',
+      );
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(
+        find.text('A student with this ID already exists.'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('student-id')),
+        '2026-0199',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(StudentDetailsScreen),
+          matching: find.text('2026-0199'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        students.map((student) => student.studentId).toSet().length,
+        students.length,
+      );
+
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Taylor Updated'),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+      final enrolledCard = find.ancestor(
+        of: find.text('Taylor Updated'),
+        matching: find.byKey(const ValueKey('2026-0199')),
+      );
+      final deleteButton = find.descendant(
+        of: enrolledCard,
+        matching: find.text('Delete'),
+      );
+      await tester.ensureVisible(deleteButton);
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+      expect(find.text('6 Students'), findsOneWidget);
+      expect(
+        students.any((student) => student.studentId == '2026-0199'),
+        isFalse,
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      students
+        ..clear()
+        ..addAll(originalStudents);
+      await tester.pumpWidget(const MyApp());
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(find.text('6 Students'), findsOneWidget);
+      expect(find.text('Taylor Updated'), findsNothing);
+      expect(
+        students.any((student) => student.studentId == '2026-0199'),
+        isFalse,
+      );
+      expect(
+        students.map((student) => student.studentId).toSet().length,
+        students.length,
+      );
+
+      await tester.tap(find.byTooltip('Add Student'));
+      await tester.pumpAndSettle();
+
+      for (final key in [
+        'enrollment-student-id',
+        'enrollment-full-name',
+        'enrollment-course',
+        'enrollment-year-level',
+        'enrollment-email',
+      ]) {
+        expect(
+          tester
+              .widget<TextFormField>(find.byKey(ValueKey(key)))
+              .controller!
+              .text,
+          isEmpty,
+        );
+      }
+    },
+  );
+
+  testWidgets('rejects duplicate IDs, invalid email, and invalid year levels', (
+    WidgetTester tester,
+  ) async {
+    final originalStudentCount = students.length;
+    await _pumpLoadedDirectory(tester);
+    await tester.tap(find.byTooltip('Add Student'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('enrollment-student-id')),
+      '2023-0001',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('enrollment-full-name')),
+      'New Student',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('enrollment-course')),
+      'BS Computer Science',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('enrollment-year-level')),
+      'Freshman',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('enrollment-email')),
+      'not-an-email',
+    );
+    await tester.ensureVisible(find.text('Enroll Student'));
+    await tester.tap(find.text('Enroll Student'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AddStudentScreen), findsOneWidget);
+    expect(find.text('A student with this ID already exists.'), findsOneWidget);
+    expect(find.text('Enter a valid email address.'), findsOneWidget);
+    expect(
+      find.text('Enter a year level from 1st Year to 6th Year.'),
+      findsOneWidget,
+    );
+    expect(students, hasLength(originalStudentCount));
+  });
+
+  testWidgets('shows required-field messages for an empty enrollment form', (
+    WidgetTester tester,
+  ) async {
+    final originalStudentCount = students.length;
+    await _pumpLoadedDirectory(tester);
+    await tester.tap(find.byTooltip('Add Student'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Enroll Student'));
+    await tester.tap(find.text('Enroll Student'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AddStudentScreen), findsOneWidget);
+    expect(find.text('This field is required.'), findsNWidgets(5));
+    expect(students, hasLength(originalStudentCount));
   });
 }
